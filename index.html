@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BoxTrack — Moving Helper</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0e0c;
+    --surface: #1a1916;
+    --surface2: #252320;
+    --accent: #f5c842;
+    --accent2: #e8734a;
+    --text: #f0ede8;
+    --muted: #7a7570;
+    --border: #2e2c28;
+    --success: #5dba7e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+
+  header {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--accent); }
+
+  .box-count {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .box-count strong { color: var(--accent); }
+
+  .main {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 28px 20px 0;
+  }
+
+  /* ADD BOX PANEL */
+  .add-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 32px;
+  }
+
+  .add-panel h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: 80px 1fr auto;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .row2 {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+  }
+
+  input, select, textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: var(--muted);
+  }
+
+  select option { background: var(--surface2); }
+
+  textarea {
+    resize: vertical;
+    min-height: 70px;
+    line-height: 1.6;
+  }
+
+  .btn {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #0f0e0c;
+  }
+  .btn-primary:hover { background: #ffd84d; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid transparent;
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+  .btn-danger:hover { color: #e05555; }
+
+  .btn-export {
+    background: var(--accent2);
+    color: white;
+  }
+  .btn-export:hover { background: #f08050; transform: translateY(-1px); }
+
+  /* BOXES LIST */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+  }
+
+  .search-bar {
+    max-width: 200px;
+    font-size: 12px;
+    padding: 7px 12px;
+  }
+
+  .boxes-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .box-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+    animation: slideIn 0.25s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .box-card:hover { border-color: #3a3830; }
+
+  .box-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+  }
+
+  .box-num {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    color: var(--accent);
+    min-width: 36px;
+    line-height: 1;
+  }
+
+  .box-info { flex: 1; }
+
+  .box-label {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 3px;
+  }
+
+  .box-meta {
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    gap: 12px;
+  }
+
+  .room-badge {
+    display: inline-block;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+  }
+
+  .priority-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .p-high { background: #e05555; }
+  .p-normal { background: var(--muted); }
+  .p-low { background: var(--border); }
+
+  .box-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .chevron {
+    color: var(--muted);
+    font-size: 12px;
+    transition: transform 0.2s;
+  }
+  .chevron.open { transform: rotate(180deg); }
+
+  .box-body {
+    display: none;
+    padding: 0 16px 16px;
+    border-top: 1px solid var(--border);
+  }
+  .box-body.open { display: block; }
+
+  .items-list {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #c5c0b8;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .items-count {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+
+  /* EDIT MODE */
+  .edit-form {
+    margin-top: 12px;
+    display: none;
+  }
+  .edit-form.open { display: block; }
+  .edit-form textarea { margin-bottom: 8px; }
+  .edit-form .edit-actions { display: flex; gap: 8px; }
+
+  /* EMPTY STATE */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty p { font-size: 13px; line-height: 1.7; }
+
+  /* FILTER BAR */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .filter-chip {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    transition: all 0.15s;
+  }
+  .filter-chip:hover, .filter-chip.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(245,200,66,0.08);
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--success);
+    color: #0f0e0c;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    transition: transform 0.3s ease;
+    z-index: 100;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .export-bar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .stat-pill {
+    font-size: 11px;
+    color: var(--muted);
+    margin-left: auto;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Box<span>Track</span></div>
+  <div class="box-count">
+    <strong id="totalBoxes">0</strong> boxes &nbsp;·&nbsp; <strong id="totalItems">0</strong> items
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ADD BOX -->
+  <div class="add-panel">
+    <h2>+ New Box</h2>
+    <div class="row">
+      <input type="number" id="boxNum" placeholder="#" min="1" max="999" />
+      <input type="text" id="boxLabel" placeholder="Label (e.g. Kitchen, Books, Clothes)" />
+      <select id="boxPriority" style="width:110px">
+        <option value="normal">Normal</option>
+        <option value="high">🔴 Unpack first</option>
+        <option value="low">Low priority</option>
+      </select>
+    </div>
+    <div class="row2">
+      <div>
+        <select id="boxRoom">
+          <option value="">Room destination</option>
+          <option>Kitchen</option>
+          <option>Living room</option>
+          <option>Bedroom</option>
+          <option>Bathroom</option>
+          <option>Office</option>
+          <option>Storage</option>
+          <option>Kids room</option>
+          <option>Garage</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="addBox()">Add Box</button>
+    </div>
+    <div style="margin-top:10px">
+      <textarea id="boxItems" placeholder="Items inside (one per line or comma-separated)&#10;e.g. Coffee maker&#10;4 mugs&#10;Dish towels"></textarea>
+    </div>
+  </div>
+
+  <!-- BOXES LIST -->
+  <div id="listSection" style="display:none">
+    <div class="section-header">
+      <span class="section-title">All Boxes</span>
+      <div class="export-bar">
+        <button class="btn btn-export" onclick="exportCSV()">⬇ Export Excel/CSV</button>
+      </div>
+    </div>
+
+    <div class="filter-bar" id="filterBar">
+      <button class="filter-chip active" onclick="setFilter('all', this)">All</button>
+      <button class="filter-chip" onclick="setFilter('high', this)">🔴 Unpack first</button>
+    </div>
+
+    <div class="boxes-grid" id="boxesGrid"></div>
+  </div>
+
+  <div class="empty" id="emptyState">
+    <div class="icon">📦</div>
+    <p>No boxes yet.<br>Add your first box above to get started.</p>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let boxes = JSON.parse(localStorage.getItem('boxtrack') || '[]');
+let currentFilter = 'all';
+
+function save() {
+  localStorage.setItem('boxtrack', JSON.stringify(boxes));
+}
+
+function nextBoxNum() {
+  if (!boxes.length) return 1;
+  return Math.max(...boxes.map(b => b.num)) + 1;
+}
+
+function addBox() {
+  const num = parseInt(document.getElementById('boxNum').value) || nextBoxNum();
+  const label = document.getElementById('boxLabel').value.trim() || 'Unlabeled';
+  const items = document.getElementById('boxItems').value.trim();
+  const room = document.getElementById('boxRoom').value;
+  const priority = document.getElementById('boxPriority').value;
+
+  if (boxes.find(b => b.num === num)) {
+    showToast(`Box #${num} already exists!`);
+    return;
+  }
+
+  boxes.push({ num, label, items, room, priority, id: Date.now() });
+  boxes.sort((a, b) => a.num - b.num);
+  save();
+
+  // reset
+  document.getElementById('boxNum').value = '';
+  document.getElementById('boxLabel').value = '';
+  document.getElementById('boxItems').value = '';
+  document.getElementById('boxRoom').value = '';
+  document.getElementById('boxPriority').value = 'normal';
+
+  render();
+  showToast(`Box #${num} added ✓`);
+}
+
+function deleteBox(id) {
+  boxes = boxes.filter(b => b.id !== id);
+  save();
+  render();
+}
+
+function toggleBox(id) {
+  const body = document.getElementById('body_' + id);
+  const chev = document.getElementById('chev_' + id);
+  body.classList.toggle('open');
+  chev.classList.toggle('open');
+}
+
+function startEdit(id) {
+  const box = boxes.find(b => b.id === id);
+  document.getElementById('editArea_' + id).value = box.items;
+  document.getElementById('editForm_' + id).classList.add('open');
+}
+
+function saveEdit(id) {
+  const box = boxes.find(b => b.id === id);
+  box.items = document.getElementById('editArea_' + id).value.trim();
+  save();
+  document.getElementById('editForm_' + id).classList.remove('open');
+  render();
+  showToast('Saved ✓');
+}
+
+function cancelEdit(id) {
+  document.getElementById('editForm_' + id).classList.remove('open');
+}
+
+function countItems(itemStr) {
+  if (!itemStr.trim()) return 0;
+  const lines = itemStr.split('\n').filter(l => l.trim());
+  if (lines.length > 1) return lines.length;
+  return itemStr.split(',').filter(s => s.trim()).length;
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function getFilteredBoxes() {
+  if (currentFilter === 'all') return boxes;
+  if (currentFilter === 'high') return boxes.filter(b => b.priority === 'high');
+  return boxes.filter(b => b.room === currentFilter);
+}
+
+function updateRoomFilters() {
+  const rooms = [...new Set(boxes.map(b => b.room).filter(Boolean))];
+  const bar = document.getElementById('filterBar');
+  // keep first 2 (All + Unpack first), rebuild rest
+  while (bar.children.length > 2) bar.removeChild(bar.lastChild);
+  rooms.forEach(r => {
+    const btn = document.createElement('button');
+    btn.className = 'filter-chip' + (currentFilter === r ? ' active' : '');
+    btn.textContent = r;
+    btn.onclick = function() { setFilter(r, this); };
+    bar.appendChild(btn);
+  });
+}
+
+function render() {
+  const filtered = getFilteredBoxes();
+  const grid = document.getElementById('boxesGrid');
+  const empty = document.getElementById('emptyState');
+  const listSection = document.getElementById('listSection');
+
+  if (boxes.length === 0) {
+    empty.style.display = 'block';
+    listSection.style.display = 'none';
+    return;
+  }
+
+  empty.style.display = 'none';
+  listSection.style.display = 'block';
+  updateRoomFilters();
+
+  // auto-suggest next box number
+  document.getElementById('boxNum').placeholder = '#' + nextBoxNum();
+
+  const totalItems = boxes.reduce((s, b) => s + countItems(b.items), 0);
+  document.getElementById('totalBoxes').textContent = boxes.length;
+  document.getElementById('totalItems').textContent = totalItems;
+
+  grid.innerHTML = filtered.map(box => {
+    const ic = countItems(box.items);
+    const dotClass = box.priority === 'high' ? 'p-high' : box.priority === 'low' ? 'p-low' : 'p-normal';
+    const itemLines = box.items ? box.items.split('\n').map(l => l.trim()).filter(Boolean).join('\n') : '';
+
+    return `
+    <div class="box-card" id="card_${box.id}">
+      <div class="box-header" onclick="toggleBox(${box.id})">
+        <div class="box-num">${box.num}</div>
+        <div class="box-info">
+          <div class="box-label" style="display:flex;align-items:center;gap:8px">
+            <div class="priority-dot ${dotClass}"></div>
+            ${box.label}
+          </div>
+          <div class="box-meta">
+            ${box.room ? `<span class="room-badge">${box.room}</span>` : ''}
+            <span>${ic} item${ic !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+        <div class="box-actions">
+          <button class="btn btn-danger" onclick="event.stopPropagation();deleteBox(${box.id})">✕</button>
+          <span class="chevron" id="chev_${box.id}">▼</span>
+        </div>
+      </div>
+      <div class="box-body" id="body_${box.id}">
+        ${itemLines ? `<div class="items-list">${itemLines}</div>` : '<div style="color:var(--muted);font-size:12px;margin-top:12px">No items recorded yet.</div>'}
+        <div class="edit-form" id="editForm_${box.id}">
+          <textarea id="editArea_${box.id}">${box.items || ''}</textarea>
+          <div class="edit-actions">
+            <button class="btn btn-primary" onclick="saveEdit(${box.id})">Save</button>
+            <button class="btn btn-outline" onclick="cancelEdit(${box.id})">Cancel</button>
+          </div>
+        </div>
+        ${!document.getElementById('editForm_' + box.id + '.open') ? `
+        <div style="margin-top:12px">
+          <button class="btn btn-outline" style="font-size:11px;padding:6px 14px" onclick="startEdit(${box.id})">✏ Edit items</button>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function exportCSV() {
+  if (!boxes.length) { showToast('No boxes to export'); return; }
+
+  const rows = [['Box #', 'Label', 'Room', 'Priority', 'Items (all)', 'Item count']];
+
+  boxes.forEach(box => {
+    const items = box.items ? box.items.split('\n').map(s => s.trim()).filter(Boolean).join('; ') : '';
+    const ic = countItems(box.items);
+    const pri = box.priority === 'high' ? 'Unpack first' : box.priority === 'low' ? 'Low' : 'Normal';
+    rows.push([box.num, box.label, box.room || '', pri, items, ic]);
+  });
+
+  // Also create per-item rows on a second "sheet" (separate section)
+  rows.push([]);
+  rows.push(['--- ITEM DETAIL ---']);
+  rows.push(['Box #', 'Label', 'Room', 'Item']);
+  boxes.forEach(box => {
+    const items = box.items ? box.items.split('\n').map(s => s.trim()).filter(Boolean) : [''];
+    items.forEach(item => {
+      rows.push([box.num, box.label, box.room || '', item]);
+    });
+  });
+
+  const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'moving-boxes.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Exported! Open in Excel ✓');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// Allow Enter key to submit
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'boxLabel') addBox();
+});
+
+render();
+</script>
+</body>
+</html>
