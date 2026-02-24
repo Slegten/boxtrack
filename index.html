@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>BoxTrack — Moving Helper</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -94,6 +96,20 @@
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 10px;
+  }
+
+  @media (max-width: 480px) {
+    .row {
+      grid-template-columns: 70px 1fr;
+    }
+    .row > :last-child {
+      grid-column: 1 / -1;
+    }
+    .row2 {
+      grid-template-columns: 1fr;
+    }
+    .row2 .btn { width: 100%; }
+    input, select, textarea { font-size: 16px; } /* prevent iOS zoom */
   }
 
   input, select, textarea {
@@ -429,7 +445,7 @@
     <div class="section-header">
       <span class="section-title">All Boxes</span>
       <div class="export-bar">
-        <button class="btn btn-export" onclick="exportCSV()">⬇ Export Excel/CSV</button>
+        <button class="btn btn-export" onclick="exportData()">⬆ Share / Export</button>
       </div>
     </div>
 
@@ -621,38 +637,74 @@ function render() {
   }).join('');
 }
 
-function exportCSV() {
-  if (!boxes.length) { showToast('No boxes to export'); return; }
-
+function buildCSV() {
   const rows = [['Box #', 'Label', 'Room', 'Priority', 'Items (all)', 'Item count']];
-
   boxes.forEach(box => {
     const items = box.items ? box.items.split('\n').map(s => s.trim()).filter(Boolean).join('; ') : '';
     const ic = countItems(box.items);
     const pri = box.priority === 'high' ? 'Unpack first' : box.priority === 'low' ? 'Low' : 'Normal';
     rows.push([box.num, box.label, box.room || '', pri, items, ic]);
   });
-
-  // Also create per-item rows on a second "sheet" (separate section)
   rows.push([]);
   rows.push(['--- ITEM DETAIL ---']);
   rows.push(['Box #', 'Label', 'Room', 'Item']);
   boxes.forEach(box => {
     const items = box.items ? box.items.split('\n').map(s => s.trim()).filter(Boolean) : [''];
-    items.forEach(item => {
-      rows.push([box.num, box.label, box.room || '', item]);
-    });
+    items.forEach(item => rows.push([box.num, box.label, box.room || '', item]));
   });
+  return rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+}
 
-  const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+async function exportData() {
+  if (!boxes.length) { showToast('No boxes to export'); return; }
+  const csv = buildCSV();
+
+  // 1. Try Web Share API (iOS Safari, Android Chrome)
+  if (navigator.share && navigator.canShare) {
+    try {
+      const file = new File(['\uFEFF' + csv], 'moving-boxes.csv', { type: 'text/csv' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'BoxTrack export' });
+        return;
+      }
+    } catch(e) {
+      if (e.name !== 'AbortError') {
+        // fall through to next method
+      } else { return; }
+    }
+  }
+
+  // 2. Try Web Share API without file (text share)
+  if (navigator.share) {
+    try {
+      // Build readable text version
+      const text = boxes.map(b => {
+        const items = b.items ? b.items.split('\n').filter(l=>l.trim()).map(l=>'  • ' + l.trim()).join('\n') : '  (no items)';
+        return `📦 Box ${b.num} — ${b.label}${b.room ? ' ['+b.room+']' : ''}\n${items}`;
+      }).join('\n\n');
+      await navigator.share({ title: 'BoxTrack — Moving Boxes', text });
+      return;
+    } catch(e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+
+  // 3. Try clipboard copy
+  if (navigator.clipboard) {
+    try {
+      await navigator.clipboard.writeText(csv);
+      showToast('Copied to clipboard! Paste in Excel/Notes ✓');
+      return;
+    } catch(e) {}
+  }
+
+  // 4. Desktop download fallback
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = 'moving-boxes.csv';
-  a.click();
+  a.href = url; a.download = 'moving-boxes.csv'; a.click();
   URL.revokeObjectURL(url);
-  showToast('Exported! Open in Excel ✓');
+  showToast('Downloaded! Open in Excel ✓');
 }
 
 function showToast(msg) {
